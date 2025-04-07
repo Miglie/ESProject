@@ -23,7 +23,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "FreeRTOS.h"
+#include "task.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,7 +64,8 @@ static void MX_SPI1_Init(void);
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
-
+void blinkLED(void *argument);
+//void printTaskList();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -129,6 +132,8 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  xTaskCreate_TMR(blinkLED, "Led", 128, NULL, 1, NULL);
+  //xTaskCreate(printTaskList, "TaskPrinter", 1024, NULL, 1, NULL);
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -395,6 +400,21 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+void blinkLED(void *argument){
+	const TickType_t xDelay = 500/portTICK_PERIOD_MS;
+	for(;;){
+		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
+		vTaskDelay(xDelay);
+	}
+}
+
+/*void printTaskList(void)
+{
+    char taskList[512];  // Buffer for task list (adjust size as needed)
+    vTaskList(taskList); // Get list of tasks
+    printf("Task Name\tState\tPriority\tStack Left\tTask Number\n");
+    printf("%s\n", taskList);
+}*/
 
 /* USER CODE END 4 */
 
