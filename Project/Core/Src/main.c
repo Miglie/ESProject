@@ -25,7 +25,6 @@
 /* USER CODE BEGIN Includes */
 #include "FreeRTOS.h"
 #include "task.h"
-#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -65,7 +64,6 @@ void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 void blinkLED(void *argument);
-//void printTaskList();
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -407,14 +405,6 @@ void blinkLED(void *argument){
 		vTaskDelay(xDelay);
 	}
 }
-
-/*void printTaskList(void)
-{
-    char taskList[512];  // Buffer for task list (adjust size as needed)
-    vTaskList(taskList); // Get list of tasks
-    printf("Task Name\tState\tPriority\tStack Left\tTask Number\n");
-    printf("%s\n", taskList);
-}*/
 
 /* USER CODE END 4 */
 
