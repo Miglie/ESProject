@@ -574,6 +574,15 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 
 #endif
 
+typedef struct element{
+	int value;
+	struct element *next;
+}node_list;
+
+typedef node_list *node;
+
+static node IntegerList;
+
 /*-----------------------------------------------------------*/
 
 #if( configSUPPORT_STATIC_ALLOCATION == 1 )
@@ -834,6 +843,72 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 			}
 		}
 		return xReturn;
+	}
+
+	void TaskVotingInt(){
+		node pointer = IntegerList;
+		    int values[3] = {0};
+
+		    // Fill values from the linked list
+		    for (int i = 0; i < 3 && pointer != NULL; i++) {
+		        values[i] = pointer->value;
+		        pointer = pointer->next;
+		    }
+
+		    // Simple voting logic
+		    if (values[0] == values[1]) {
+
+		    } else if (values[1] == values[2]) {
+
+		    } else if (values[0] == values[2]) {
+
+		    }
+
+		    // Optional: clear the list after voting
+		    pointer = IntegerList;
+		    while (pointer != NULL) {
+		        node next = pointer->next;
+		        vPortFree(pointer);
+		        pointer = next;
+		    }
+		    IntegerList = NULL;
+	}
+
+	//There is only one task executing, the output is integer, commit function absent
+	// Task Terminated gets called at the end of a task and checks if all the three copies have terminated
+	//void TaskTerminated(commit, compare, output)
+	void TaskTerminated(int output){
+		node new_node = pvPortMalloc(sizeof(node));
+		    if (new_node == NULL) {
+		        // Handle malloc failure (optional)
+		        return;
+		    }
+
+		    new_node->value = output;
+		    new_node->next = NULL;
+
+		    if (IntegerList == NULL) {
+		        // First value
+		        IntegerList = new_node;
+		        return;
+		    }
+
+		    // Append new node to the list
+		    node pointer = IntegerList;
+		    int count = 1;  // Already have one node
+
+		    while (pointer->next != NULL) {
+		        pointer = pointer->next;
+		        count++;
+		    }
+
+		    pointer->next = new_node;
+		    count++;
+
+		    // If 3 values are now present, do voting
+		    if (count == 3) {
+		        TaskVotingInt();
+		    }
 	}
 
 	BaseType_t xTaskCreate(	TaskFunction_t pxTaskCode,
