@@ -574,14 +574,14 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 
 #endif
 
-typedef struct element{
-	int value;
-	struct element *next;
-}node_list;
+struct node{
+	void * value;
+	struct node * next;
+};
 
-typedef node_list *node;
+typedef struct node * result;
 
-static node IntegerList;
+static result output_list = NULL;
 
 /*-----------------------------------------------------------*/
 
@@ -845,69 +845,76 @@ static node IntegerList;
 		return xReturn;
 	}
 
-	void TaskVotingInt(){
-		node pointer = IntegerList;
-		    int values[3] = {0};
+	/*
+		Commit e compare devono essere scritte dall'utente
+		TODO: Togliere la dichiarazione quando tutto è implementato correttamente	
+	*/
 
-		    // Fill values from the linked list
-		    for (int i = 0; i < 3 && pointer != NULL; i++) {
-		        values[i] = pointer->value;
-		        pointer = pointer->next;
-		    }
+	//Implementazione da decidere... 1 se ==, 0 se !=
+	//int compare(void * element1, void * element2){}
 
-		    // Simple voting logic
-		    if (values[0] == values[1]) {
+	//Function to commit correct result
+	//void commit(void * result){}
 
-		    } else if (values[1] == values[2]) {
-
-		    } else if (values[0] == values[2]) {
-
-		    }
-
-		    // Optional: clear the list after voting
-		    pointer = IntegerList;
-		    while (pointer != NULL) {
-		        node next = pointer->next;
-		        vPortFree(pointer);
-		        pointer = next;
-		    }
-		    IntegerList = NULL;
+	void TaskVoting(int flag, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
+		result second_result = output_list->next;
+		result third_result = second_result->next;
+		if(compare(output_list->value, second_result->value) == 1 || compare(output_list->value, third_result->value) == 1){
+			commit(output_list->value);
+		}else if (compare(second_result->value, third_result->value) == 1){
+			commit(second_result->value);
+		}else{/*TODO: Implementazione di tre risultati diversi, messaggio di errore 'Task execution failed'*/}
+		//Free della memoria
+		//TODO: Bisogna fare la free anche di value? SI! Prima però bisogna capire cosa succede se l'utente committa usando il puntatore...
+		//in quel caso value non può essere deallocata, capire cosa fare!
+		if(flag == 1){
+			vPortFree(output_list->value);
+			vPortFree(second_result->value);
+			vPortFree(third_result->value);
+		}
+		vPortFree(output_list);
+		vPortFree(second_result);
+		vPortFree(third_result);
+		//output_list is again initialized to NULL
+		output_list = NULL;
 	}
 
 	//There is only one task executing, the output is integer, commit function absent
 	// Task Terminated gets called at the end of a task and checks if all the three copies have terminated
 	//void TaskTerminated(commit, compare, output)
-	void TaskTerminated(int output){
-		node new_node = pvPortMalloc(sizeof(node));
-		    if (new_node == NULL) {
-		        // Handle malloc failure (optional)
+	//flag 0 -> no deallocation(static variables), 1 -> full deallocation(dynamic variables)
+	//MEMO!! User is forced to deep copy an object in the commit function because it is deallocated!!
+	void TaskTerminated(void * output, size_t size, int flag, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
+		result new_result  = pvPortMalloc(size);
+
+			//New node creation
+			//TODO: Dobbiamo controllare che la malloc allochi bene?
+		    new_result->value = output;
+		    new_result->next = NULL;
+
+			//Head insertion
+			//TODO: Assicurarsi che output_list venga settata a NULL fuori dalla funzione
+		    if(output_list == NULL){
+		        output_list = new_result;
 		        return;
 		    }
 
-		    new_node->value = output;
-		    new_node->next = NULL;
+		    result pointer = output_list;
+			//Counting how many elements are already in the list
+		    int count = 1;
 
-		    if (IntegerList == NULL) {
-		        // First value
-		        IntegerList = new_node;
-		        return;
-		    }
-
-		    // Append new node to the list
-		    node pointer = IntegerList;
-		    int count = 1;  // Already have one node
-
-		    while (pointer->next != NULL) {
+			//Forse si può sostituire meglio con un if??
+		    while(pointer->next != NULL){
 		        pointer = pointer->next;
 		        count++;
 		    }
 
-		    pointer->next = new_node;
+		    pointer->next = new_result;
 		    count++;
 
-		    // If 3 values are now present, do voting
-		    if (count == 3) {
-		        TaskVotingInt();
+		    //When all tasks have produced a value, the result is voted
+		    if(count == 3){
+		    	TaskVoting(flag, compare, commit);
 		    }
 	}
 

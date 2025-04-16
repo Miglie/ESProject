@@ -342,8 +342,10 @@ is used in assert() statements. */
 							void * const pvParameters,
 							UBaseType_t uxPriority,
 							TaskHandle_t * const pxCreatedTask ) PRIVILEGED_FUNCTION;
-	void TaskVotingInt();
-	void TaskTerminated(int output);
+
+	//Da lasciare?
+	void TaskVoting(int flag, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
+	void TaskTerminated(void * output, size_t size, int flag, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
 #endif
 
 /**

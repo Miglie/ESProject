@@ -64,6 +64,9 @@ void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 void blinkLED(void *argument);
+int compare(void * primo, void * secondo);
+void commit();
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -398,12 +401,39 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+/*
 void blinkLED(void *argument){
 	const TickType_t xDelay = 500/portTICK_PERIOD_MS;
 	for(;;){
 		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
 		vTaskDelay(xDelay);
 	}
+} */
+
+
+int compare(void * primo, void * secondo){
+  //MEMO: User have to explicitely typecast into the right pointer type
+  int * first;
+  int * second;
+  first = (int *)primo;
+  second = (int *)secondo;
+  if(*first == *second) return 1;
+  return 0;
+}
+
+void commit(){
+  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
+}
+
+void blinkLED(void * argument){
+  for(;;){
+    int i = 1;
+    void * pointer = &i;
+    TaskTerminated(pointer, sizeof(int), 0, compare, commit);
+    const TickType_t xDelay = 500/portTICK_PERIOD_MS;
+    vTaskDelay(xDelay);
+  }
 }
 
 /* USER CODE END 4 */
