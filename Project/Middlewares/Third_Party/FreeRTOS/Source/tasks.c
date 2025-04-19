@@ -856,18 +856,22 @@ static result output_list = NULL;
 	//Function to commit correct result
 	//void commit(void * result){}
 
-	void TaskVoting(int flag, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
+	BaseType_t taskVoting(int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		result second_result = output_list->next;
 		result third_result = second_result->next;
+		BaseType_t message = pdPASS;
 		if(compare(output_list->value, second_result->value) == 1 || compare(output_list->value, third_result->value) == 1){
 			commit(output_list->value);
 		}else if (compare(second_result->value, third_result->value) == 1){
 			commit(second_result->value);
-		}else{/*TODO: Implementazione di tre risultati diversi, messaggio di errore 'Task execution failed'*/}
-		//Free della memoria
-		//TODO: Bisogna fare la free anche di value? SI! Prima però bisogna capire cosa succede se l'utente committa usando il puntatore...
-		//in quel caso value non può essere deallocata, capire cosa fare!
-		if(flag == 1){
+		}else{
+			//If there are three different results, we return a failure message to the user
+			message = pdFAIL;
+			}
+		//The user tells us if the memory was allocated statically (no deallocation needed) or dinamically
+		//(deallocation needed). Memory allocated dinamically will be always deallocated, so if user wants to
+		//continue to use the output, he can't use a pointer anymore but he has to perform a deep copy
+		if(deallocate_memory == 1){
 			vPortFree(output_list->value);
 			vPortFree(second_result->value);
 			vPortFree(third_result->value);
@@ -877,6 +881,7 @@ static result output_list = NULL;
 		vPortFree(third_result);
 		//output_list is again initialized to NULL
 		output_list = NULL;
+		return message;
 	}
 
 	//There is only one task executing, the output is integer, commit function absent
@@ -884,11 +889,12 @@ static result output_list = NULL;
 	//void TaskTerminated(commit, compare, output)
 	//flag 0 -> no deallocation(static variables), 1 -> full deallocation(dynamic variables)
 	//MEMO!! User is forced to deep copy an object in the commit function because it is deallocated!!
-	void TaskTerminated(void * output, size_t size, int flag, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
+	BaseType_t taskTerminated(void * output, size_t size, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		result new_result  = pvPortMalloc(size);
-
+		BaseType_t message = pdPASS;
 			//New node creation
 			//TODO: Dobbiamo controllare che la malloc allochi bene?
+			//Potremmo restituire pdFAIL in caso la malloc fallisca, ma bisogna gestire la cosa
 		    new_result->value = output;
 		    new_result->next = NULL;
 
@@ -896,7 +902,7 @@ static result output_list = NULL;
 			//TODO: Assicurarsi che output_list venga settata a NULL fuori dalla funzione
 		    if(output_list == NULL){
 		        output_list = new_result;
-		        return;
+		        return message;
 		    }
 
 		    result pointer = output_list;
@@ -914,8 +920,9 @@ static result output_list = NULL;
 
 		    //When all tasks have produced a value, the result is voted
 		    if(count == 3){
-		    	TaskVoting(flag, compare, commit);
+		    	message = taskVoting(deallocate_memory, compare, commit);
 		    }
+			return message;
 	}
 
 	BaseType_t xTaskCreate(	TaskFunction_t pxTaskCode,

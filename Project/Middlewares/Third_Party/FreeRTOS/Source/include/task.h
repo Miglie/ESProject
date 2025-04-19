@@ -344,8 +344,8 @@ is used in assert() statements. */
 							TaskHandle_t * const pxCreatedTask ) PRIVILEGED_FUNCTION;
 
 	//Da lasciare?
-	void TaskVoting(int flag, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
-	void TaskTerminated(void * output, size_t size, int flag, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
+	BaseType_t taskVoting(int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
+	BaseType_t taskTerminated(void * output, size_t size, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
 #endif
 
 /**
