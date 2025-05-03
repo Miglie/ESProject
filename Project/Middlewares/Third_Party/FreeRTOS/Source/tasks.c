@@ -574,12 +574,6 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 
 #endif
 
-struct node{
-	void * value;
-	struct node * next;
-};
-
-typedef struct node * result;
 
 static result output_list = NULL;
 
@@ -842,6 +836,15 @@ static result output_list = NULL;
 				xReturn = pdPASS;
 			}
 		}
+		int identifier;
+		result newResult;
+		newResult = pvPortMalloc(sizeof(result));
+		newResult->output1 = NULL;
+		newResult->output2 = NULL;
+		newResult->output3 = NULL;
+		newResult->identifier = identifier;
+		newResult->next = output_list;
+		output_list = newResult;
 		return xReturn;
 	}
 
@@ -856,14 +859,12 @@ static result output_list = NULL;
 	//Function to commit correct result
 	//void commit(void * result){}
 
-	BaseType_t taskVoting(int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
-		result second_result = output_list->next;
-		result third_result = second_result->next;
+	BaseType_t taskVoting(result pointer, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		BaseType_t message = pdPASS;
-		if(compare(output_list->value, second_result->value) == 1 || compare(output_list->value, third_result->value) == 1){
-			commit(output_list->value);
-		}else if (compare(second_result->value, third_result->value) == 1){
-			commit(second_result->value);
+		if(compare(pointer->output1, pointer->output2) == 1 || compare(pointer->output1, pointer->output3) == 1){
+			commit(pointer->output1);
+		}else if (compare(pointer->output2, pointer->output3) == 1){
+			commit(pointer->output3);
 		}else{
 			//If there are three different results, we return a failure message to the user
 			message = pdFAIL;
@@ -872,15 +873,13 @@ static result output_list = NULL;
 		//(deallocation needed). Memory allocated dinamically will be always deallocated, so if user wants to
 		//continue to use the output, he can't use a pointer anymore but he has to perform a deep copy
 		if(deallocate_memory == 1){
-			vPortFree(output_list->value);
-			vPortFree(second_result->value);
-			vPortFree(third_result->value);
+			vPortFree(pointer->output1);
+			vPortFree(pointer->output2);
+			vPortFree(pointer->output3);
 		}
-		vPortFree(output_list);
-		vPortFree(second_result);
-		vPortFree(third_result);
-		//output_list is again initialized to NULL
-		output_list = NULL;
+		pointer->output1 = NULL;
+		pointer->output2 = NULL;
+		pointer->output3 = NULL;
 		return message;
 	}
 
@@ -889,40 +888,25 @@ static result output_list = NULL;
 	//void TaskTerminated(commit, compare, output)
 	//flag 0 -> no deallocation(static variables), 1 -> full deallocation(dynamic variables)
 	//MEMO!! User is forced to deep copy an object in the commit function because it is deallocated!!
-	BaseType_t taskTerminated(void * output, size_t size, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
-		result new_result  = pvPortMalloc(size);
+	BaseType_t taskTerminated(int id, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		BaseType_t message = pdPASS;
-			//New node creation
-			//TODO: Dobbiamo controllare che la malloc allochi bene?
-			//Potremmo restituire pdFAIL in caso la malloc fallisca, ma bisogna gestire la cosa
-		    new_result->value = output;
-		    new_result->next = NULL;
 
-			//Head insertion
-			//TODO: Assicurarsi che output_list venga settata a NULL fuori dalla funzione
-		    if(output_list == NULL){
-		        output_list = new_result;
-		        return message;
-		    }
-
-		    result pointer = output_list;
-			//Counting how many elements are already in the list
-		    int count = 1;
-
-			//Forse si può sostituire meglio con un if??
-		    while(pointer->next != NULL){
-		        pointer = pointer->next;
-		        count++;
-		    }
-
-		    pointer->next = new_result;
-		    count++;
-
-		    //When all tasks have produced a value, the result is voted
-		    if(count == 3){
-		    	message = taskVoting(deallocate_memory, compare, commit);
-		    }
-			return message;
+		result pointer = output_list;
+		while(pointer->identifier != id){
+			pointer = pointer->next;
+		}
+		// problem if the output = NULL
+		if(pointer->output1 == NULL){
+			pointer->output1 = output;
+		}
+		else if(pointer->output2 == NULL){
+			pointer->output2 = output;
+		}
+		else if(pointer->output3 == NULL){
+			pointer->output3 = output;
+			message = taskVoting(pointer, deallocate_memory, compare, commit);
+		}
+		return message;
 	}
 
 	BaseType_t xTaskCreate(	TaskFunction_t pxTaskCode,
