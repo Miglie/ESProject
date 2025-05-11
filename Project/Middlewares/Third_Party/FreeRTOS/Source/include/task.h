@@ -348,14 +348,14 @@ is used in assert() statements. */
 		void * output1;
 		void * output2;
 		void * output3;
-		TaskHandle_t * identifier;
+		TaskHandle_t identifier;
 		struct node * next;
 	};
 
 	typedef struct node * result;
 
 	BaseType_t taskVoting(result pointer, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
-	BaseType_t taskTerminated(TaskHandle_t * identifier, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
+	BaseType_t taskTerminated(TaskHandle_t identifier, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
 #endif
 
 /**

@@ -133,7 +133,8 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-  xTaskCreate_TMR(blinkLED, "Led", 128, NULL, 1, NULL);
+  TaskHandle_t identifier;
+  xTaskCreate_TMR(blinkLED, "Led", 128, &identifier, 1, &identifier);
   //xTaskCreate(printTaskList, "TaskPrinter", 1024, NULL, 1, NULL);
   /* USER CODE END RTOS_THREADS */
 
@@ -430,7 +431,7 @@ void blinkLED(void * argument){
   for(;;){
     int i = 1;
     void * pointer = &i;
-    taskTerminated(handler, pointer, 0, compare, commit);
+    taskTerminated((TaskHandle_t) * argument, pointer, 0, compare, commit);
     const TickType_t xDelay = 500/portTICK_PERIOD_MS;
     vTaskDelay(xDelay);
   }

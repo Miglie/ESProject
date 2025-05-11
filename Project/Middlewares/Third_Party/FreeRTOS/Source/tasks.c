@@ -842,7 +842,7 @@ static result output_list = NULL;
 		newResult->output1 = NULL;
 		newResult->output2 = NULL;
 		newResult->output3 = NULL;
-		newResult->identifier = pxCreatedTask;
+		newResult->identifier = *pxCreatedTask;
 		newResult->next = output_list;
 		output_list = newResult;
 		return xReturn;
@@ -888,7 +888,7 @@ static result output_list = NULL;
 	//void TaskTerminated(commit, compare, output)
 	//flag 0 -> no deallocation(static variables), 1 -> full deallocation(dynamic variables)
 	//MEMO!! User is forced to deep copy an object in the commit function because it is deallocated!!
-	BaseType_t taskTerminated(TaskHandle_t * id, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
+	BaseType_t taskTerminated(TaskHandle_t id, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		BaseType_t message = pdPASS;
 
 		result pointer = output_list;
