@@ -431,7 +431,8 @@ void blinkLED(void * argument){
   for(;;){
     int i = 1;
     void * pointer = &i;
-    taskTerminated((TaskHandle_t) * argument, pointer, 0, compare, commit);
+    TaskHandle_t *identifier = (TaskHandle_t *) argument;
+    taskTerminated(*identifier, pointer, 0, compare, commit);
     const TickType_t xDelay = 500/portTICK_PERIOD_MS;
     vTaskDelay(xDelay);
   }
