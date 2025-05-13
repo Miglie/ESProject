@@ -355,7 +355,7 @@ is used in assert() statements. */
 	typedef struct node * result;
 
 	BaseType_t taskVoting(result pointer, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
-	BaseType_t taskTerminated(TaskHandle_t identifier, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
+	BaseType_t taskTerminated(TaskHandle_t *identifier, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
 #endif
 
 /**

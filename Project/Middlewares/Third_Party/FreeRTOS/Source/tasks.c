@@ -831,7 +831,7 @@ static result output_list = NULL;
 				}
 				#endif /* tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE */
 
-				prvInitialiseNewTask( pxTaskCode, pcName, ( uint32_t ) usStackDepth, pvParameters, uxPriority, pxCreatedTask, pxNewTCB[i], NULL );
+				prvInitialiseNewTask( pxTaskCode, pcName, ( uint32_t ) usStackDepth, pvParameters, uxPriority, &pxCreatedTask[i], pxNewTCB[i], NULL );
 				prvAddNewTaskToReadyList( pxNewTCB[i]);
 				xReturn = pdPASS;
 			}
@@ -842,22 +842,12 @@ static result output_list = NULL;
 		newResult->output1 = NULL;
 		newResult->output2 = NULL;
 		newResult->output3 = NULL;
+		//Come identifier usiamo il primo elemento dell'array
 		newResult->identifier = *pxCreatedTask;
 		newResult->next = output_list;
 		output_list = newResult;
 		return xReturn;
 	}
-
-	/*
-		Commit e compare devono essere scritte dall'utente
-		TODO: Togliere la dichiarazione quando tutto è implementato correttamente	
-	*/
-
-	//Implementazione da decidere... 1 se ==, 0 se !=
-	//int compare(void * element1, void * element2){}
-
-	//Function to commit correct result
-	//void commit(void * result){}
 
 	BaseType_t taskVoting(result pointer, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		BaseType_t message = pdPASS;
@@ -883,28 +873,31 @@ static result output_list = NULL;
 		return message;
 	}
 
-	//There is only one task executing, the output is integer, commit function absent
-	// Task Terminated gets called at the end of a task and checks if all the three copies have terminated
+	//Task Terminated gets called at the end of a task and checks if all the three copies have terminated
 	//void TaskTerminated(commit, compare, output)
 	//flag 0 -> no deallocation(static variables), 1 -> full deallocation(dynamic variables)
 	//MEMO!! User is forced to deep copy an object in the commit function because it is deallocated!!
-	BaseType_t taskTerminated(TaskHandle_t id, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
+	BaseType_t taskTerminated(TaskHandle_t * id, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		BaseType_t message = pdPASS;
 
 		result pointer = output_list;
-		while(pointer->identifier != id){
+		while(pointer->identifier != *id){
 			pointer = pointer->next;
 		}
 		// problem if the output = NULL
 		if(pointer->output1 == NULL){
 			pointer->output1 = output;
+			vTaskSuspend(id[0]);
 		}
 		else if(pointer->output2 == NULL){
 			pointer->output2 = output;
+			vTaskSuspend(id[1]);
 		}
 		else if(pointer->output3 == NULL){
 			pointer->output3 = output;
 			message = taskVoting(pointer, deallocate_memory, compare, commit);
+			vTaskResume(id[0]);
+			vTaskResume(id[1]);
 		}
 		return message;
 	}
