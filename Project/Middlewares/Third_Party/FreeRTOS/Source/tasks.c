@@ -830,20 +830,21 @@ static result output_list = NULL;
 					pxNewTCB[i]->ucStaticallyAllocated = tskDYNAMICALLY_ALLOCATED_STACK_AND_TCB;
 				}
 				#endif /* tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE */
-
-				prvInitialiseNewTask( pxTaskCode, pcName, ( uint32_t ) usStackDepth, pvParameters, uxPriority, &pxCreatedTask[i], pxNewTCB[i], NULL );
+				
+				//taskHandle of third task initialised as identifier
+				prvInitialiseNewTask( pxTaskCode, pcName, ( uint32_t ) usStackDepth, pvParameters, uxPriority, pxCreatedTask, pxNewTCB[i], NULL );
 				prvAddNewTaskToReadyList( pxNewTCB[i]);
 				xReturn = pdPASS;
 			}
 		}
 
 		result newResult;
-		newResult = pvPortMalloc(sizeof(result));
+		newResult = pvPortMalloc(sizeof(struct node));
 		newResult->output1 = NULL;
 		newResult->output2 = NULL;
 		newResult->output3 = NULL;
 		//Come identifier usiamo il primo elemento dell'array
-		newResult->identifier = *pxCreatedTask;
+		newResult->identifier = pxCreatedTask;
 		newResult->next = output_list;
 		output_list = newResult;
 		return xReturn;
@@ -877,27 +878,29 @@ static result output_list = NULL;
 	//void TaskTerminated(commit, compare, output)
 	//flag 0 -> no deallocation(static variables), 1 -> full deallocation(dynamic variables)
 	//MEMO!! User is forced to deep copy an object in the commit function because it is deallocated!!
-	BaseType_t taskTerminated(TaskHandle_t * id, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
+	BaseType_t taskTerminated(TaskHandle_t id, TaskHandle_t currentTask, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		BaseType_t message = pdPASS;
 
 		result pointer = output_list;
-		while(pointer->identifier != *id){
+		while(pointer->identifier != id){
 			pointer = pointer->next;
 		}
 		// problem if the output = NULL
 		if(pointer->output1 == NULL){
 			pointer->output1 = output;
-			vTaskSuspend(id[0]);
+			pointer->handle1 = currentTask;
+			vTaskSuspend(currentTask);
 		}
 		else if(pointer->output2 == NULL){
 			pointer->output2 = output;
-			vTaskSuspend(id[1]);
+			pointer->handle2 = currentTask;
+			vTaskSuspend(currentTask);
 		}
 		else if(pointer->output3 == NULL){
 			pointer->output3 = output;
 			message = taskVoting(pointer, deallocate_memory, compare, commit);
-			vTaskResume(id[0]);
-			vTaskResume(id[1]);
+			vTaskResume(pointer->handle1);
+			vTaskResume(pointer->handle2);
 		}
 		return message;
 	}

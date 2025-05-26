@@ -343,11 +343,14 @@ is used in assert() statements. */
 							UBaseType_t uxPriority,
 							TaskHandle_t * const pxCreatedTask ) PRIVILEGED_FUNCTION;
 
-	//Da lasciare?
+
 	struct node{
 		void * output1;
+		TaskHandle_t handle1;
 		void * output2;
+		TaskHandle_t handle2;
 		void * output3;
+		TaskHandle_t handle3;
 		TaskHandle_t identifier;
 		struct node * next;
 	};
@@ -355,7 +358,7 @@ is used in assert() statements. */
 	typedef struct node * result;
 
 	BaseType_t taskVoting(result pointer, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
-	BaseType_t taskTerminated(TaskHandle_t *identifier, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
+	BaseType_t taskTerminated(TaskHandle_t identifier, TaskHandle_t currentTask , void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
 #endif
 
 /**
