@@ -333,7 +333,7 @@ is used in assert() statements. */
 							const configSTACK_DEPTH_TYPE usStackDepth,
 							void * const pvParameters,
 							UBaseType_t uxPriority,
-							TaskHandle_t * const pxCreatedTask );
+							TaskHandle_t * const pxCreatedTask ) PRIVILEGED_FUNCTION;
 
 
 	BaseType_t xTaskCreate(	TaskFunction_t pxTaskCode,
@@ -344,21 +344,18 @@ is used in assert() statements. */
 							TaskHandle_t * const pxCreatedTask ) PRIVILEGED_FUNCTION;
 
 
-	struct node{
+	struct GCB{
 		void * output1;
-		TaskHandle_t handle1;
 		void * output2;
-		TaskHandle_t handle2;
 		void * output3;
-		TaskHandle_t handle3;
-		TaskHandle_t identifier;
-		struct node * next;
+		TaskHandle_t task1;
+		TaskHandle_t task2;
 	};
 
-	typedef struct node * result;
+	typedef struct GCB * GroupHandle;
 
-	BaseType_t taskVoting(result pointer, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
-	BaseType_t taskTerminated(TaskHandle_t identifier, TaskHandle_t currentTask , void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
+	BaseType_t taskVoting(GroupHandle handle, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
+	BaseType_t taskTerminated(TaskHandle_t currentTask, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
 #endif
 
 /**

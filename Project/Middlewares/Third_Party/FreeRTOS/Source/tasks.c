@@ -326,6 +326,9 @@ typedef struct tskTaskControlBlock 			/* The old naming convention is used to pr
 		int iTaskErrno;
 	#endif
 
+	//Struct that controls a group of three tasks
+	GroupHandle groupHandle;
+
 } tskTCB;
 
 /* The old tskTCB name is maintained above then typedefed to the new TCB_t name
@@ -574,9 +577,6 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 
 #endif
 
-
-static result output_list = NULL;
-
 /*-----------------------------------------------------------*/
 
 #if( configSUPPORT_STATIC_ALLOCATION == 1 )
@@ -740,6 +740,7 @@ static result output_list = NULL;
 							UBaseType_t uxPriority,
 							TaskHandle_t * const pxCreatedTask )
 	{
+
 	//triplicated the pointers
 	TCB_t * pxNewTCB[3]; 
 	BaseType_t xReturn;
@@ -838,24 +839,32 @@ static result output_list = NULL;
 			}
 		}
 
-		result newResult;
-		newResult = pvPortMalloc(sizeof(struct node));
-		newResult->output1 = NULL;
-		newResult->output2 = NULL;
-		newResult->output3 = NULL;
-		//Come identifier usiamo il primo elemento dell'array
-		newResult->identifier = pxCreatedTask;
-		newResult->next = output_list;
-		output_list = newResult;
+		//TODO: Spostare sopra initialize la creazione del nodo, cosi usiamo l'indirizzo del nodo per
+		//inserire output: non dobbiamo nemmeno cercare!!
+		//TODO advanced: Creare una mega struct di controllo che viene indirizzata direttamente dai tcb dei
+		//task
+		if(xReturn == pdPASS){
+			GroupHandle newGroup;
+			newGroup = pvPortMalloc(sizeof(struct node));
+			newGroup->output1 = NULL;
+			newGroup->output2 = NULL;
+			newGroup->output3 = NULL;
+			newGroup->task1 = NULL;
+			newGroup->task2 = NULL;
+			for(i=0; i<3; i++){
+				pxNewTCB[i]->groupHandle = newGroup;
+			}
+		}
+
 		return xReturn;
 	}
 
-	BaseType_t taskVoting(result pointer, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
+	BaseType_t taskVoting(GroupHandle handle, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		BaseType_t message = pdPASS;
-		if(compare(pointer->output1, pointer->output2) == 1 || compare(pointer->output1, pointer->output3) == 1){
-			commit(pointer->output1);
-		}else if (compare(pointer->output2, pointer->output3) == 1){
-			commit(pointer->output3);
+		if(compare(handle->output1, handle->output2) == 1 || compare(handle->output1, handle->output3) == 1){
+			commit(handle->output1);
+		}else if (compare(handle->output2, handle->output3) == 1){
+			commit(handle->output3);
 		}else{
 			//If there are three different results, we return a failure message to the user
 			message = pdFAIL;
@@ -864,13 +873,13 @@ static result output_list = NULL;
 		//(deallocation needed). Memory allocated dinamically will be always deallocated, so if user wants to
 		//continue to use the output, he can't use a pointer anymore but he has to perform a deep copy
 		if(deallocate_memory == 1){
-			vPortFree(pointer->output1);
-			vPortFree(pointer->output2);
-			vPortFree(pointer->output3);
+			vPortFree(handle->output1);
+			vPortFree(handle->output2);
+			vPortFree(handle->output3);
 		}
-		pointer->output1 = NULL;
-		pointer->output2 = NULL;
-		pointer->output3 = NULL;
+		handle->output1 = NULL;
+		handle->output2 = NULL;
+		handle->output3 = NULL;
 		return message;
 	}
 
@@ -878,29 +887,26 @@ static result output_list = NULL;
 	//void TaskTerminated(commit, compare, output)
 	//flag 0 -> no deallocation(static variables), 1 -> full deallocation(dynamic variables)
 	//MEMO!! User is forced to deep copy an object in the commit function because it is deallocated!!
-	BaseType_t taskTerminated(TaskHandle_t id, TaskHandle_t currentTask, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
+	BaseType_t taskTerminated(TaskHandle_t currentTask, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		BaseType_t message = pdPASS;
 
-		result pointer = output_list;
-		while(pointer->identifier != id){
-			pointer = pointer->next;
-		}
+		GroupHandle handle = currentTask->groupHandle;
 		// problem if the output = NULL
-		if(pointer->output1 == NULL){
-			pointer->output1 = output;
-			pointer->handle1 = currentTask;
+		if(handle->output1 == NULL){
+			handle->output1 = output;
+			handle->task1 = currentTask;
 			vTaskSuspend(currentTask);
 		}
-		else if(pointer->output2 == NULL){
-			pointer->output2 = output;
-			pointer->handle2 = currentTask;
+		else if(handle->output2 == NULL){
+			handle->output2 = output;
+			handle->task2 = currentTask;
 			vTaskSuspend(currentTask);
 		}
-		else if(pointer->output3 == NULL){
-			pointer->output3 = output;
-			message = taskVoting(pointer, deallocate_memory, compare, commit);
-			vTaskResume(pointer->handle1);
-			vTaskResume(pointer->handle2);
+		else if(handle->output3 == NULL){
+			handle->output3 = output;
+			message = taskVoting(handle, deallocate_memory, compare, commit);
+			vTaskResume(handle->task1);
+			vTaskResume(handle->task2);
 		}
 		return message;
 	}
