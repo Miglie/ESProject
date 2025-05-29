@@ -845,13 +845,13 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 		//task
 		if(xReturn == pdPASS){
 			GroupHandle newGroup;
-			newGroup = pvPortMalloc(sizeof(struct node));
+			newGroup = pvPortMalloc(sizeof(struct GCB));
 			newGroup->output1 = NULL;
 			newGroup->output2 = NULL;
 			newGroup->output3 = NULL;
 			newGroup->task1 = NULL;
 			newGroup->task2 = NULL;
-			for(i=0; i<3; i++){
+			for(int i=0; i<3; i++){
 				pxNewTCB[i]->groupHandle = newGroup;
 			}
 		}
