@@ -343,7 +343,9 @@ is used in assert() statements. */
 							UBaseType_t uxPriority,
 							TaskHandle_t * const pxCreatedTask ) PRIVILEGED_FUNCTION;
 
-
+	//Control struct for the triple modular redundancy feature:
+		// output(n): output of the nth task of the group
+		// task(n): reference to the nth task control block (reference needed to wake up the task)
 	struct GCB{
 		void * output1;
 		void * output2;

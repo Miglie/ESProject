@@ -733,6 +733,8 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 
 #if( configSUPPORT_DYNAMIC_ALLOCATION == 1 )
 
+	// Implements triple modular redundancy by creating three copies of the same task. Each copy uses a different stack and
+	// is executed indipendently. The parameters are the same of the original xTaskCreate function.
 	BaseType_t xTaskCreate_TMR(	TaskFunction_t pxTaskCode,
 							const char * const pcName,		/*lint !e971 Unqualified char types are allowed for strings and single characters only. */
 							const configSTACK_DEPTH_TYPE usStackDepth,
@@ -839,10 +841,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 			}
 		}
 
-		//TODO: Spostare sopra initialize la creazione del nodo, cosi usiamo l'indirizzo del nodo per
-		//inserire output: non dobbiamo nemmeno cercare!!
-		//TODO advanced: Creare una mega struct di controllo che viene indirizzata direttamente dai tcb dei
-		//task
+		// Creation of the Group Control Block relative to these tasks
 		if(xReturn == pdPASS){
 			GroupHandle newGroup;
 			newGroup = pvPortMalloc(sizeof(struct GCB));
@@ -859,6 +858,14 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 		return xReturn;
 	}
 
+	// Compares the outputs using the compare function provided by the user.
+	// By using a majority criterion chooses the correct output or returns a failed task error.
+	// @handle: pointer to the GroupHandle for the tasks
+	// @deallocate_memory: flag that tells if the memory has been allocated statically or dynamically(1-> dynamic, 0-> static)
+	// Dinamically allocated memory always gets deallocated, if the user wants to keep the output(dynamically allocated), he has
+	// to perform a deep copy. 	
+	// @compare: pointer to the compare function written by the user
+	// @commit: pointer to the commit function written by the user
 	BaseType_t taskVoting(GroupHandle handle, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		BaseType_t message = pdPASS;
 		if(compare(handle->output1, handle->output2) == 1 || compare(handle->output1, handle->output3) == 1){
@@ -866,12 +873,8 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 		}else if (compare(handle->output2, handle->output3) == 1){
 			commit(handle->output3);
 		}else{
-			//If there are three different results, we return a failure message to the user
 			message = pdFAIL;
 			}
-		//The user tells us if the memory was allocated statically (no deallocation needed) or dinamically
-		//(deallocation needed). Memory allocated dinamically will be always deallocated, so if user wants to
-		//continue to use the output, he can't use a pointer anymore but he has to perform a deep copy
 		if(deallocate_memory == 1){
 			vPortFree(handle->output1);
 			vPortFree(handle->output2);
@@ -883,15 +886,26 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 		return message;
 	}
 
-	//Task Terminated gets called at the end of a task and checks if all the three copies have terminated
-	//void TaskTerminated(commit, compare, output)
-	//flag 0 -> no deallocation(static variables), 1 -> full deallocation(dynamic variables)
-	//MEMO!! User is forced to deep copy an object in the commit function because it is deallocated!!
+	// Task Terminated has to be called at the end of user defined code of a task and checks if all of the three copies have terminated.
+	// After the computation taskTerminated will wake up all the tasks.
+	// Warning: to work properly the user output should never be NULL
+	// @currentTask: TaskHandle of the caller task
+	// @output: void pointer to the output of the task
+	// @deallocate_memory: flag that tells if the memory needs to be deallocated (1-> deallocate, 0-> don't deallocate)
+	// Warning: should always be set to 0 for statically allocated variables
+	// @compare: pointer to the compare function written by the user
+	// @commit: pointer to the commit function written by the user
+	//
+	// Functions compare and commit have to be implemented in this way:
+	// 	int compare(void * output1, void * output2)
+	// 	Should return 1 if the outputs are equal, 0 otherwise
+	//
+	// 	void commit(void * result) 
+	//	Implements user defined code to use the correct output 
 	BaseType_t taskTerminated(TaskHandle_t currentTask, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		BaseType_t message = pdPASS;
 
 		GroupHandle handle = currentTask->groupHandle;
-		// problem if the output = NULL
 		if(handle->output1 == NULL){
 			handle->output1 = output;
 			handle->task1 = currentTask;

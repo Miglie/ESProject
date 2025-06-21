@@ -36,7 +36,10 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-
+    typedef struct {
+      int integer;
+      float floating;
+    }TestStruct;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
