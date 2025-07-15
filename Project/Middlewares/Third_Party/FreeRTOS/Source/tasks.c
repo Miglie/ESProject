@@ -845,11 +845,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 		if(xReturn == pdPASS){
 			GroupHandle newGroup;
 			newGroup = pvPortMalloc(sizeof(struct GCB));
-			newGroup->output1 = NULL;
-			newGroup->output2 = NULL;
-			newGroup->output3 = NULL;
-			newGroup->task1 = NULL;
-			newGroup->task2 = NULL;
+			newGroup->counter = 0;
 			for(int i=0; i<3; i++){
 				pxNewTCB[i]->groupHandle = newGroup;
 			}
@@ -868,21 +864,19 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 	// @commit: pointer to the commit function written by the user
 	BaseType_t taskVoting(GroupHandle handle, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
 		BaseType_t message = pdPASS;
-		if(compare(handle->output1, handle->output2) == 1 || compare(handle->output1, handle->output3) == 1){
-			commit(handle->output1);
-		}else if (compare(handle->output2, handle->output3) == 1){
-			commit(handle->output3);
+		if(compare(handle->output[0], handle->output[1]) == 1 || compare(handle->output[0], handle->output[2]) == 1){
+			commit(handle->output[0]);
+		}else if (compare(handle->output[1], handle->output[2]) == 1){
+			commit(handle->output[2]);
 		}else{
 			message = pdFAIL;
 			}
 		if(deallocate_memory == 1){
-			vPortFree(handle->output1);
-			vPortFree(handle->output2);
-			vPortFree(handle->output3);
+			vPortFree(handle->output[0]);
+			vPortFree(handle->output[1]);
+			vPortFree(handle->output[2]);
 		}
-		handle->output1 = NULL;
-		handle->output2 = NULL;
-		handle->output3 = NULL;
+		handle->counter = 0;
 		return message;
 	}
 
@@ -895,6 +889,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 	// Warning: should always be set to 0 for statically allocated variables
 	// @compare: pointer to the compare function written by the user
 	// @commit: pointer to the commit function written by the user
+	// @xDelay: delay after the end of the task before rescheduling it again
 	//
 	// Functions compare and commit have to be implemented in this way:
 	// 	int compare(void * output1, void * output2)
@@ -902,25 +897,22 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 	//
 	// 	void commit(void * result) 
 	//	Implements user defined code to use the correct output 
-	BaseType_t taskTerminated(TaskHandle_t currentTask, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result)){
+	BaseType_t taskTerminated(void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result), TickType_t xDelay){
 		BaseType_t message = pdPASS;
+		TaskHandle_t currentTask = xTaskGetCurrentTaskHandle();
 
 		GroupHandle handle = currentTask->groupHandle;
-		if(handle->output1 == NULL){
-			handle->output1 = output;
-			handle->task1 = currentTask;
+		handle->output[handle->counter] = output;
+
+		if(handle->counter<2){
+			handle->task[handle->counter] = currentTask;
+			handle->counter++;
 			vTaskSuspend(currentTask);
-		}
-		else if(handle->output2 == NULL){
-			handle->output2 = output;
-			handle->task2 = currentTask;
-			vTaskSuspend(currentTask);
-		}
-		else if(handle->output3 == NULL){
-			handle->output3 = output;
+		} else {
 			message = taskVoting(handle, deallocate_memory, compare, commit);
-			vTaskResume(handle->task1);
-			vTaskResume(handle->task2);
+    		vTaskDelay(xDelay);
+			vTaskResume(handle->task[0]);
+			vTaskResume(handle->task[1]);
 		}
 		return message;
 	}

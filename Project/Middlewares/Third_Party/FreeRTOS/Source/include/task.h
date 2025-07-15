@@ -347,17 +347,15 @@ is used in assert() statements. */
 		// output(n): output of the nth task of the group
 		// task(n): reference to the nth task control block (reference needed to wake up the task)
 	struct GCB{
-		void * output1;
-		void * output2;
-		void * output3;
-		TaskHandle_t task1;
-		TaskHandle_t task2;
+		void * output[3];
+		TaskHandle_t task[2];
+		int counter;
 	};
 
 	typedef struct GCB * GroupHandle;
 
 	BaseType_t taskVoting(GroupHandle handle, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
-	BaseType_t taskTerminated(TaskHandle_t currentTask, void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result));
+	BaseType_t taskTerminated(void * output, int deallocate_memory, int(*compare)(void * result1, void * result2), void(*commit)(void * result), TickType_t xDelay);
 #endif
 
 /**
