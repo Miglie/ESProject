@@ -733,8 +733,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 
 #if( configSUPPORT_DYNAMIC_ALLOCATION == 1 )
 
-	// Implements triple modular redundancy by creating three copies of the same task. Each copy uses a different stack and
-	// is executed indipendently. The parameters are the same of the original xTaskCreate function.
+
 	BaseType_t xTaskCreate_TMR(	TaskFunction_t pxTaskCode,
 							const char * const pcName,		/*lint !e971 Unqualified char types are allowed for strings and single characters only. */
 							const configSTACK_DEPTH_TYPE usStackDepth,
@@ -742,10 +741,8 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 							UBaseType_t uxPriority,
 							TaskHandle_t * const pxCreatedTask )
 	{
-
-	//triplicated the pointers
-	TCB_t * pxNewTCB[3]; 
-	BaseType_t xReturn;
+		TCB_t *pxNewTCB[3];
+		BaseType_t xReturn;
 
 		/* If the stack grows down then allocate the stack then the TCB so the stack
 		does not grow into the TCB.  Likewise if the stack grows up then allocate
@@ -755,77 +752,79 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 			/* Allocate space for the TCB.  Where the memory comes from depends on
 			the implementation of the port malloc function and whether or not static
 			allocation is being used. */
-
 			for(int i=0; i<3; i++){
-
 				pxNewTCB[i] = ( TCB_t * ) pvPortMalloc( sizeof( TCB_t ) );
-
-				if( pxNewTCB[i] != NULL )
-				{
-					/* Allocate space for the stack used by the task being created.
-					The base of the stack memory stored in the TCB so the task can
-					be deleted later if required. */
+				if(pxNewTCB[i]==NULL){
+					for(int j=i-1; j>=0; j-- ){
+						vPortFree( pxNewTCB[j]);
+					}
+					for(int i=0; i<3; i++){
+						pxNewTCB[i] = NULL;
+					}
+					break;
+				}
+			}
+			/*Allocates memory for the stack if the TCB were created correctly. If there is not enough space for the three stacks deletes them and sets them to NULL */
+			if(pxNewTCB[0]!=NULL){
+				for(int i=0; i<3; i++){
 					pxNewTCB[i]->pxStack = ( StackType_t * ) pvPortMalloc( ( ( ( size_t ) usStackDepth ) * sizeof( StackType_t ) ) ); /*lint !e961 MISRA exception as the casts are only redundant for some ports. */
-
-					if( pxNewTCB[i]->pxStack == NULL )
-					{
-						/* Could not allocate the stack.  Delete the allocated TCB. */
-
-						for(int j=i; j>0; j++){
-							vPortFree( pxNewTCB[j] );
-							pxNewTCB[j] = NULL;
+					if( pxNewTCB[i]->pxStack == NULL){
+						for(int j=i-1; j>=0; j--){
+							vPortFree(pxNewTCB[i]->pxStack );
 						}
+						for(int i=0; i<3; i++){
+							pxNewTCB[i] = NULL;
+						}
+						break;
 					}
 				}
 			}
 		}
 		#else /* portSTACK_GROWTH */
 		{
-			for(int i=0; i<3; i++){
 			StackType_t *pxStack[3];
 
-				/* Allocate space for the stack used by the task being created. */
+			/*Allocates space for the stacks, if it failes sets both the stacks and TBCs to NULL*/
+			for(int i=0; i<3; i++){
 				pxStack[i] = pvPortMalloc( ( ( ( size_t ) usStackDepth ) * sizeof( StackType_t ) ) ); /*lint !e9079 All values returned by pvPortMalloc() have at least the alignment required by the MCU's stack and this allocation is the stack. */
-				
-				if( pxStack[i] != NULL )
-				{
-					/* Allocate space for the TCB. */
+				if(pxStack[i] == NULL){
+					for(int j=i-1; j>=0; j--){
+						vPortFree(pxStack[j]);
+					}
+					for(int i=0; i<3; i++){
+							pxStack[i] = NULL;
+							pxNewTCB[i] = NULL;
+					}
+					break;
+				}
+			}
+			/*If the stacks were created correctly, creates the TCBs and assigns them the stacks. If there is not enough spaces for all the TCBs, frees the ones
+			already allocated and sets them to NULL*/
+			if(pxStack[0]!=NULL){
+				for(int i=0; i<3; i++){
 					pxNewTCB[i] = ( TCB_t * ) pvPortMalloc( sizeof( TCB_t ) ); /*lint !e9087 !e9079 All values returned by pvPortMalloc() have at least the alignment required by the MCU's stack, and the first member of TCB_t is always a pointer to the task's stack. */
-
-					if( pxNewTCB[i] != NULL )
-					{
-						/* Store the stack location in the TCB. */
+					if(pxNewTCB[i]==NULL){
+						for(int j=i-1; j>=0; j--){
+							vPortFree(pxNewTCB[i]);
+						}
+						for(int i=0; i<3; i++){
+							pxNewTCB[i] = NULL;
+						}
+						break;
+					}
+				}
+				if(pxNewTCB[0]!=NULL){
+					for(int i=0; i<3; i++){
 						pxNewTCB[i]->pxStack = pxStack[i];
 					}
-					else
-					{
-						/* The stack cannot be used as the TCB was not created.  Free
-						it again. */
-						for(int j=i; j>0; j++){
-							vPortFree( pxStack[j] );
-						}
-					}
-				}
-				else
-				{
-					for(int j=i; j>0; j++){
-						pxNewTCB[j] = NULL;
-					}
-
 				}
 			}
-		#endif /* portSTACK_GROWTH */
 		}
+		#endif /* portSTACK_GROWTH */
 
-		for(int i=0; i<3; i++){
-			if( pxNewTCB[i] == NULL)
-			{
-				xReturn = errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY;
-				return xReturn;
-
-			}
-			else
-			{
+		/*If the TCBs are created correctly, initalizes the tasks, else returns the error messages*/
+		if(pxNewTCB[0] != NULL){
+			for(int i=0; i<3; i++){
 				#if( tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE != 0 ) /*lint !e9029 !e731 Macro has been consolidated for readability reasons. */
 				{
 					/* Tasks can be created statically or dynamically, so note this
@@ -833,12 +832,15 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 					pxNewTCB[i]->ucStaticallyAllocated = tskDYNAMICALLY_ALLOCATED_STACK_AND_TCB;
 				}
 				#endif /* tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE */
-				
-				//taskHandle of third task initialised as identifier
+
 				prvInitialiseNewTask( pxTaskCode, pcName, ( uint32_t ) usStackDepth, pvParameters, uxPriority, pxCreatedTask, pxNewTCB[i], NULL );
-				prvAddNewTaskToReadyList( pxNewTCB[i]);
+				prvAddNewTaskToReadyList( pxNewTCB[i] );
 				xReturn = pdPASS;
 			}
+		}
+		else
+		{
+			xReturn = errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY;
 		}
 
 		// Creation of the Group Control Block relative to these tasks
@@ -852,7 +854,9 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 		}
 
 		return xReturn;
+
 	}
+
 
 	// Compares the outputs using the compare function provided by the user.
 	// By using a majority criterion chooses the correct output or returns a failed task error.
