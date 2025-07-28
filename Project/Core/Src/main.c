@@ -51,7 +51,7 @@ SPI_HandleTypeDef hspi1;
 
 osThreadId defaultTaskHandle;
 /* USER CODE BEGIN PV */
-int counter = 0;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -63,12 +63,6 @@ static void MX_SPI1_Init(void);
 void StartDefaultTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
-void StructTest(void *argument);
-void blinkLED1(void *argument);
-void blinkLED2(void *argument);
-void BitFlipTest(void *argument);
-int compare(void * first, void * second);
-void commit();
 
 /* USER CODE END PFP */
 
@@ -136,11 +130,7 @@ int main(void)
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
-  //xTaskCreate_TMR(blinkLED, "Led", 512, NULL, 1, NULL);
- // xTaskCreate_TMR(blinkLED1, "LED", 512, NULL, 1, NULL);
-   // xTaskCreate_TMR(blinkLED2, "LED", 512, NULL, 1, NULL);
-  xTaskCreate_TMR(BitFlipTest, "bitFlip", 512, NULL, 1, NULL);
-  //xTaskCreate(printTaskList, "TaskPrinter", 1024, NULL, 1, NULL);
+  
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -407,126 +397,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-/*
-void blinkLED(void *argument){
-	const TickType_t xDelay = 500/portTICK_PERIOD_MS;
-	for(;;){
-		HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
-		vTaskDelay(xDelay);
-	}
-} */
-
-
-int compare(void * primo, void * secondo){
-  //MEMO: User have to explicitely typecast into the right pointer type
-  int * first;
-  int * second;
-  first = (int *)primo;
-  second = (int *)secondo;
-  if(*first == *second) return 1;
-  return 0;
-}
-
-
-void commit1(){
-  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
-}
-
-void commit2(){
-  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
-}
-
-void blinkLED1(void * argument){
-  for(;;){
-    int i = 1;
-    void * pointer = &i;
-    const TickType_t xDelay = 1000/portTICK_PERIOD_MS;
-    taskTerminated(pointer, 0, compare, commit1, xDelay);
-  }
-}
-
-void blinkLED2(void * argument){
-  for(;;){
-    int i = 1;
-    void * pointer = &i;
-    const TickType_t xDelay = 500/portTICK_PERIOD_MS;
-    taskTerminated(pointer, 0, compare, commit2, xDelay);
-  }
-}
-
-/*int compare(void * first, void * second){
-    TestStruct * primo;
-    TestStruct * secondo;
-    primo = (TestStruct*) first;
-    secondo = (TestStruct*) second;
-    if((primo->integer == secondo->integer)&&(primo->floating == secondo->floating)){
-      return 1;
-    } else {
-      return 0;
-    }
-}
-
-void commit(){
-  HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
-}*/
-
-/*void StructTest(void *argument){
-  for(;;){
-    TestStruct * pointer;
-    pointer = pvPortMalloc(sizeof(TestStruct));
-    pointer->integer = 5;
-    pointer ->floating = 1.215; 
-    TaskHandle_t current = xTaskGetCurrentTaskHandle();
-    taskTerminated(current, pointer, 1, compare, commit);
-
-    const TickType_t xDelay = 500/portTICK_PERIOD_MS;
-    vTaskDelay(xDelay);
-  }
-}*/
-
-void commit(void *result){
-  int *risultato;
-  risultato = (int*) result;
-  if(*risultato==1){
-    //blu
-    HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_15);
-  } else if (*risultato==0){
-    //rosso
-    HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_14);
-  }
-  
-}
-
-/*void VotingTest(void *argument){
-  for(;;){
-    int integer;
-    int * pointer = &integer;
-    if(counter==1){
-      * pointer = counter;
-      counter--;
-    } else if (counter==0){
-       * pointer = counter;
-      counter++;
-    }
-
-     const TickType_t xDelay = 500/portTICK_PERIOD_MS;
-    taskTerminated(pointer, 0, compare, commit, xDelay);
-  }
-}*/
-
-void BitFlipTest(void *argument){
-	for(;;){
-		int integer;
-		int * pointer = &integer;
-		* pointer = 1;
-		const TickType_t xDelay = 500/portTICK_PERIOD_MS;
-		if(taskTerminated(pointer, 0, compare, commit, xDelay)== pdFAIL){
-			//green
-			 HAL_GPIO_TogglePin(GPIOD, GPIO_PIN_12);
-		}
-	}
-}
 
 /* USER CODE END 4 */
 
