@@ -733,7 +733,8 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 
 #if( configSUPPORT_DYNAMIC_ALLOCATION == 1 )
 
-
+	// Implements triple modular redundancy by creating three copies of the same task. Each copy uses a different stack and
+	// is executed indipendently. The parameters are the same of the original xTaskCreate function.
 	BaseType_t xTaskCreate_TMR(	TaskFunction_t pxTaskCode,
 							const char * const pcName,		/*lint !e971 Unqualified char types are allowed for strings and single characters only. */
 							const configSTACK_DEPTH_TYPE usStackDepth,
